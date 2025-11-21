@@ -8,9 +8,23 @@ This is the core package of the [MLflow Typescript SDK](https://github.com/mlflo
 
 ## Installation
 
+### Stable release (npm)
+
 ```bash
 npm install mlflow-tracing
 ```
+
+### Preview build (Git branch)
+
+While the new shared-tracer-provider + OTLP work is incubating, you can install
+directly from the Backspace fork:
+
+```bash
+npm install github:backspace-org/mlflow#ts-otlp-sdk-preview
+```
+
+The package ships TypeScript sources and a `prepare` script that compiles `dist/`
+during `npm install`, so no additional build steps are required.
 
 ## Quickstart
 
@@ -29,8 +43,8 @@ Instantiate MLflow SDK in your application:
 import * as mlflow from 'mlflow-tracing';
 
 mlflow.init({
-  trackingUri: 'http://localhost:5000',
-  experimentId: '<experiment-id>'
+  trackingUri: process.env.MLFLOW_TRACKING_URI,
+  experimentId: process.env.MLFLOW_EXPERIMENT_ID
 });
 ```
 
@@ -54,6 +68,33 @@ getWeather('San Francisco');
 const span = mlflow.startSpan({ name: 'my-span' });
 span.end();
 ```
+
+## Environment configuration
+
+At minimum set the following before your app process starts:
+
+| Variable                  | Description                                                                                         |
+|---------------------------|-----------------------------------------------------------------------------------------------------|
+| `MLFLOW_TRACKING_URI`     | Base URL of your MLflow tracking server (e.g. `http://localhost:5001` or `databricks`).             |
+| `MLFLOW_EXPERIMENT_ID`    | Experiment that should receive traces.                                                              |
+| `OTEL_RESOURCE_ATTRIBUTES`| Optional resource metadata (comma-delimited `key=value`) stamped on every span/trace.               |
+| `OTEL_SERVICE_NAME`       | Optional override for the OpenTelemetry resource service name.                                      |
+
+### Optional: dual-export to OTLP
+
+To mirror the Python SDK’s behavior and forward traces to an OTLP collector:
+
+| Variable                              | Description                                                                                                       |
+|---------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| `MLFLOW_ENABLE_OTLP_EXPORTER`         | Enable the OTLP exporter (`true`/`false`, defaults to `true`).                                                    |
+| `MLFLOW_TRACE_ENABLE_OTLP_DUAL_EXPORT`| When `true`, keep sending traces to MLflow **and** OTLP. When `false`, OTLP replaces MLflow.                      |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`  | OTLP traces endpoint (e.g. `http://localhost:4318/v1/traces`).                                                    |
+| `OTEL_EXPORTER_OTLP_HEADERS`          | Optional comma-delimited headers such as `Authorization=Bearer <token>`.                                          |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` / `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` | Set to `http/protobuf` (default) or `grpc`.                                   |
+
+When these are configured the provider automatically wires a `BatchSpanProcessor`
+with `@opentelemetry/exporter-trace-otlp-proto` so every span is emitted as a
+standard OTLP protobuf payload in addition to the MLflow REST export.
 
 ## Documentation 📘
 
